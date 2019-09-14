@@ -10,7 +10,7 @@
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.5.1/leaflet.js"></script>
 
     <script src="assets/PruneCluster.js"></script>
-    <script src="assets/newsmth.js"></script>
+    <script src="assets/bzip2.js"></script>
     <link rel="stylesheet" href="assets/smthmapper.css"/>
   </head>
   <body>
@@ -23,6 +23,15 @@
     </div>
 
     <script>
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', 'assets/newsmth.js.bz2', true);
+      xhr.responseType = 'arraybuffer';
+      xhr.send();
+      xhr.onload = function(){
+      var bytes = new Uint8Array(xhr.response);
+
+      eval(bzip2.simple(bzip2.array(bytes)));
+
       // cannot use dict as 'constructor' is not allowed as the key.
       var markers_dict = Object.create(null);
       var markers = []
@@ -80,6 +89,8 @@
       leafletView.ProcessView();
 
       map.addLayer(leafletView);
+
+      }
 
       function removeMarker() {
         select = document.getElementById("id-select");
