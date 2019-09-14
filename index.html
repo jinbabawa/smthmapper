@@ -1,64 +1,72 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <title>Clustered Features</title>
-    <link rel="stylesheet" href="https://openlayers.org/en/v5.3.0/css/ol.css" type="text/css">
-    <!-- The line below is only needed for old environments like Internet Explorer and Android 4.x -->
-    <script src="https://cdn.polyfill.io/v2/polyfill.min.js?features=requestAnimationFrame,Element.prototype.classList,URL"></script>
-    <script src="https://openlayers.org/en/v5.3.0/build/ol.js"></script>
-    <script src="https://code.jquery.com/jquery-2.2.3.min.js"></script>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+    <meta charset="utf-8" />
+    <title>SMTH Mapper</title>
+
+    <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, target-densitydpi=device-dpi" />
+
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.5.1/leaflet.css"/>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.5.1/leaflet.js"></script>
+
+    <script src="assets/PruneCluster.js"></script>
     <script src="assets/newsmth.js"></script>
-    <style>
-      #map {
-        position: relative;
-      }
-    </style>
+    <link rel="stylesheet" href="assets/smthmapper.css"/>
   </head>
   <body>
-    <div id="map" class="map"><div id="popup"></div></div>
+    <div id="map"></div>
     <div id="buttons">
         ID: <select id="id-select">
             <option value="__all__">-- all --</option>
         </select>
         <input type="button" value="Apply" onClick="removeMarker();" />
     </div>
-    <input id="distance" type="range" min="0" max="100" step="1" value="40"/>
 
     <script>
-
       // cannot use dict as 'constructor' is not allowed as the key.
-      // var features_dict = {}
-      var distance = document.getElementById('distance');
+      var markers_dict = Object.create(null);
+      var markers = []
 
-      var features_dict = Object.create(null);
-      var features = []
+      var map = L.map("map", {
+          attributionControl: false,
+          zoomControl: false
+      }).setView(new L.LatLng(39.9288, 116.3889), 4);
+
+      L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+          detectRetina: true,
+          maxNativeZoom: 17
+      }).addTo(map);
+
+      var leafletView = new PruneClusterForLeaflet();
+
+      var markers = [];
 
       for (var i = 0; i < newsmth.length; i++) {
-          point = newsmth[i]
-          var feature = new ol.Feature({
-                //geometry: new ol.geom.Point([parseFloat(point.lon), parseFloat(point.lat)]).transform('EPSG:4326', 'EPSG:3857'),
-                geometry: new ol.geom.Point([ip_lon_lats[point[2]][0], ip_lon_lats[point[2]][1]]).transform('EPSG:4326', 'EPSG:3857'),
-                name: ids[point[0]] + '@' + ips[point[2]],
-          });
+        point = newsmth[i]
 
-          id = ids[point[0]]
+        var marker = new PruneCluster.Marker(ip_lon_lats[point[2]][1], ip_lon_lats[point[2]][0]);
 
-          if ( id in features_dict ) {
-              features_dict[id].push(feature)
-          } else {
-              features_dict[id] = [feature]
-          }
+        marker.data.popup = ids[point[0]] + '@' + ips[point[2]];
 
-          features.push(feature);
+        markers.push(marker);
+        leafletView.RegisterMarker(marker);
+
+        id = ids[point[0]]
+
+        if ( id in markers_dict ) {
+            markers_dict[id].push(marker)
+        } else {
+            markers_dict[id] = [marker]
+        }
+
+        markers.push(marker);
       }
 
       var select = document.getElementById("id-select");
   
       sorted_key = [];
   
-      for(var key in features_dict) {
+      for(var key in markers_dict) {
           sorted_key[sorted_key.length] = key;
       }
       
@@ -69,119 +77,25 @@
           select.options[select.options.length] = new Option(key, key);
       }
 
-      var source = new ol.source.Vector({
-        features: features
-      });
+      leafletView.ProcessView();
 
-      var clusterSource = new ol.source.Cluster({
-        distance: parseInt(distance.value, 10),
-        source: source
-      });
+      map.addLayer(leafletView);
 
-      var styleCache = {};
-      var clusters = new ol.layer.Vector({
-        source: clusterSource,
-        style: function(feature) {
-          var size = feature.get('features').length;
-          var style = styleCache[size];
-          if (!style) {
-            style = new ol.style.Style({
-              image: new ol.style.Circle({
-                radius: 10 + Math.log(size),
-                stroke: new ol.style.Stroke({
-                  color: '#fff'
-                }),
-                fill: new ol.style.Fill({
-                  color: '#3399CC'
-                })
-              }),
-              text: new ol.style.Text({
-                text: size.toString(),
-                fill: new ol.style.Fill({
-                  color: '#fff'
-                })
-              })
-            });
-            styleCache[size] = style;
-          }
-          return style;
-        }
-      });
-
-      var raster = new ol.layer.Tile({
-        source: new ol.source.OSM()
-      });
-
-      var map = new ol.Map({
-        layers: [raster, clusters],
-        target: 'map',
-        view: new ol.View({
-          center: [0, 0],
-          zoom: 2
-        })
-      });
-
-      distance.addEventListener('input', function() {
-        clusterSource.setDistance(parseInt(distance.value, 10));
-      });
-
-    //Add a selector control to the vectorLayer with popup functions
-    var controls = {
-      selector: new ol.interaction.Select({
-        condition: ol.events.condition.pointerMove,
-        layers: [
-            clusters
-        ]
-      })
-    };
-
-    map.addInteraction(controls['selector']);
-
-      var element = document.getElementById('popup');
-
-      var popup = new ol.Overlay({
-        element: element,
-        positioning: 'bottom-center',
-        stopEvent: false,
-        offset: [0, -50]
-      });
-      map.addOverlay(popup);
-
-      // display popup on click
-      // map.on('click', function(evt) {
-      map.on('pointermove', function(evt) {
-        var feature = map.forEachFeatureAtPixel(evt.pixel,
-          function(feature) {
-            return feature;
-          });
-        if (feature) {
-          var coordinates = feature.getGeometry().getCoordinates();
-          popup.setPosition(coordinates);
-          $(element).popover({
-            placement: 'top',
-            html: true,
-            content: feature.get('features')[0].get('name')
-          });
-          $(element).popover('show');
-        } else {
-          $(element).popover('destroy');
-        }
-      });
-
-    function removeMarker() {
+      function removeMarker() {
         select = document.getElementById("id-select");
         id = select.options[select.selectedIndex].value
 
         // window.alert(id)
-        clusterSource.getSource().clear(true);
+        leafletView.RemoveMarkers();
 
         if (id == '__all__') {
-            clusterSource.getSource().addFeatures(features);
+            leafletView.RegisterMarkers(markers);
         } else {
-            clusterSource.getSource().addFeatures(features_dict[id]);
+            leafletView.RegisterMarkers(markers_dict[id]);
         }
-    }
 
-    </script>
+        leafletView.ProcessView();
+      }
+  </script>
   </body>
 </html>
