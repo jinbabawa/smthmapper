@@ -10,7 +10,7 @@
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.5.1/leaflet.js"></script>
 
     <script src="assets/PruneCluster.js"></script>
-    <script src="assets/bzip2.js"></script>
+    <script src="assets/newsmth.js"></script>
     <link rel="stylesheet" href="assets/smthmapper.css"/>
   </head>
   <body>
@@ -23,15 +23,6 @@
     </div>
 
     <script>
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', 'assets/newsmth.js.bz2', true);
-      xhr.responseType = 'arraybuffer';
-      xhr.send();
-      xhr.onload = function(){
-      var bytes = new Uint8Array(xhr.response);
-
-      eval(bzip2.simple(bzip2.array(bytes)));
-
       // cannot use dict as 'constructor' is not allowed as the key.
       var markers_dict = Object.create(null);
       var markers = []
@@ -50,8 +41,8 @@
 
       var markers = [];
 
-      for (var i = 0; i < newsmth.length; i++) {
-        point = newsmth[i]
+      for (var i = 0; i < smth_points.length; i++) {
+        point = smth_points[i]
 
         var marker = new PruneCluster.Marker(ip_lon_lats[point[2]][1], ip_lon_lats[point[2]][0]);
 
@@ -89,8 +80,6 @@
       leafletView.ProcessView();
 
       map.addLayer(leafletView);
-
-      }
 
       function removeMarker() {
         select = document.getElementById("id-select");
