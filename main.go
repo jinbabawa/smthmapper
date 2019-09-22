@@ -129,7 +129,7 @@ func addSmth(smths map[string][]Newsmth, smth Newsmth) {
 func createNewsmthJS() {
     ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
     client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
-    collection := client.Database("smthmapper").Collection("newsmth")
+    collection := client.Database("smthmapper").Collection("smth")
 
     ctx, _ = context.WithTimeout(context.Background(), 2000*time.Second)
     cur, err := collection.Find(ctx, bson.D{})
@@ -142,6 +142,7 @@ func createNewsmthJS() {
 
     for cur.Next(ctx) {
        var smth Newsmth
+       fmt.Println(cur)
        err := cur.Decode(&smth)
        if err != nil { log.Fatal(err) }
             // {id: 'aaa', lon: '-0.1279688', lat: '51.5077286'}
